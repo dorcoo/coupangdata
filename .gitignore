@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.local
+*.local
+vite-dev.*.log
+
+# 쿠팡 원본 데이터 및 엑셀 임시 파일 무시 (보안 유지)
+*.xlsx
+*.xls
+~$*
