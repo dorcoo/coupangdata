@@ -64,7 +64,7 @@ export interface Conversation {
 }
 
 export type View = "dashboard" | "trend" | "categories" | "winner" | "pivot" | "products" | "import" | "setup";
-export type ChartMetric = "units" | "revenue" | "conversion" | "winner";
+export type ChartMetric = "views" | "units" | "revenue" | "conversion" | "winner";
 
 export interface TrendPoint {
   date: string;

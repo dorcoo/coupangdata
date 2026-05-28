@@ -21,6 +21,7 @@ export default function DashboardPanel({
   const itemSeries = buildTrendSeries([], items, true);
 
   const options: Record<ChartMetric, { label: string; color: string; suffix: string }> = {
+    views: { label: "조회수", color: "#0ea5e9", suffix: "회" },
     units: { label: "순 판매 수량", color: "#12b981", suffix: "개" },
     revenue: { label: "순 판매 금액", color: "#2563eb", suffix: "원" },
     conversion: { label: "구매전환율", color: "#f59e0b", suffix: "%" },

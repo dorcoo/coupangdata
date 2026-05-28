@@ -29,6 +29,10 @@ export default function TrendPanel({ series, items }: TrendPanelProps) {
       </section>
       <section className="chart-grid">
         <div className="dashboard-card">
+          <h3>조회수 추이</h3>
+          <LineChart points={series} value={(row) => row.views} label="조회수" color="#0ea5e9" suffix="회" />
+        </div>
+        <div className="dashboard-card">
           <h3>판매량 추이</h3>
           <LineChart points={series} value={(row) => row.units} label="판매량" color="#10b981" suffix="개" />
         </div>

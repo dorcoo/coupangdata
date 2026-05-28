@@ -53,10 +53,10 @@ h1, h2, h3, p { margin: 0; }
 .notice { margin: 0 0 18px; background: #ebf4ff; border: 1px solid #c9def7; border-radius: 12px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; }
 .notice button { padding: 4px 10px; }
 .loading { color: #64748b; margin: 14px 0; }
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 22px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; margin-bottom: 22px; }
 .kpi { height: 104px; border-radius: 14px; background: white; padding: 19px 21px; position: relative; overflow: hidden; box-shadow: 0 4px 16px rgba(24, 40, 68, .035); }
 .kpi::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 5px; }
-.kpi.blue::after { background: #4384ff; } .kpi.green::after { background: #0bb880; }
+.kpi.sky::after { background: #0ea5e9; } .kpi.blue::after { background: #4384ff; } .kpi.green::after { background: #0bb880; }
 .kpi.red::after { background: #fb385d; } .kpi.orange::after { background: #f59e0b; }
 .kpi span { display: block; color: #71849c; font-size: 12px; font-weight: 700; margin-bottom: 13px; }
 .kpi strong { font-size: 25px; letter-spacing: -.05em; }

@@ -8,6 +8,7 @@ interface KpiCardsProps {
 }
 
 export default function KpiCards({ items, series = [] }: KpiCardsProps) {
+  const views = series.length ? series.reduce((total, point) => total + point.views, 0) : pivotValue(items, "views");
   const revenue = series.length ? series.reduce((total, point) => total + point.revenue, 0) : pivotValue(items, "revenue");
   const units = series.length ? series.reduce((total, point) => total + point.units, 0) : pivotValue(items, "units_sold");
   const cancel = pivotValue(items, "cancel_amount");
@@ -15,6 +16,12 @@ export default function KpiCards({ items, series = [] }: KpiCardsProps) {
 
   return (
     <div className="kpi-grid">
+      <article className="kpi sky">
+        <span>총 조회수</span>
+        <strong>
+          {number(views)} <small>회</small>
+        </strong>
+      </article>
       <article className="kpi blue">
         <span>총 순 판매 금액</span>
         <strong>
