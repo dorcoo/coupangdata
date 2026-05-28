@@ -10,7 +10,16 @@ interface FulfillmentSummaryProps {
 
 export default function FulfillmentSummary({ items }: FulfillmentSummaryProps) {
   const [sortKey, setSortKey] = useState<
-    "fulfillment" | "options" | "revenue" | "revenueShare" | "units" | "unitShare" | "conversion" | "cancellation" | "risks"
+    | "fulfillment"
+    | "options"
+    | "views"
+    | "revenue"
+    | "revenueShare"
+    | "units"
+    | "unitShare"
+    | "conversion"
+    | "cancellation"
+    | "risks"
   >("revenue");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
@@ -34,10 +43,12 @@ export default function FulfillmentSummary({ items }: FulfillmentSummaryProps) {
       
       const revenue = pivotValue(values, "revenue");
       const units = pivotValue(values, "units_sold");
+      const views = pivotValue(values, "views");
       
       return {
         fulfillment,
         options: byOption.size,
+        views,
         revenue,
         revenueShare: totalRevenue ? (revenue / totalRevenue) * 100 : 0,
         units,
@@ -60,6 +71,7 @@ export default function FulfillmentSummary({ items }: FulfillmentSummaryProps) {
         [
           "판매방식",
           "옵션 수",
+          "조회수",
           "순 판매 금액(원)",
           "매출 비중(%)",
           "판매량",
@@ -71,6 +83,7 @@ export default function FulfillmentSummary({ items }: FulfillmentSummaryProps) {
         ...rows.map((row) => [
           row.fulfillment,
           row.options,
+          row.views,
           row.revenue,
           Number(row.revenueShare.toFixed(2)),
           row.units,
@@ -113,6 +126,12 @@ export default function FulfillmentSummary({ items }: FulfillmentSummaryProps) {
                   active={sortKey === "options"}
                   direction={sortDirection}
                   onClick={() => changeSort("options")}
+                />
+                <SortHeader
+                  label="조회수"
+                  active={sortKey === "views"}
+                  direction={sortDirection}
+                  onClick={() => changeSort("views")}
                 />
                 <SortHeader
                   label="순 판매 금액"
@@ -163,6 +182,7 @@ export default function FulfillmentSummary({ items }: FulfillmentSummaryProps) {
                 <tr key={row.fulfillment}>
                   <td className="fulfillment-name">{row.fulfillment}</td>
                   <td>{number(row.options)}</td>
+                  <td>{number(row.views)}회</td>
                   <td className="value-blue">{number(row.revenue)}원</td>
                   <td>
                     <div className="inline-share">
