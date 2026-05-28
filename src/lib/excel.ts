@@ -77,6 +77,10 @@ function isoDate(value: unknown): string {
   return stringValue(value).slice(0, 10);
 }
 
+function isValidIsoDate(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
 // 행 객체에서 별칭 사전을 기반으로 실제 키를 찾아내거나 에러를 발생시키는 함수
 function getRequiredKey(row: RawRow, key: keyof typeof aliases, fileName: string): string {
   const candidates = aliases[key];
@@ -115,17 +119,25 @@ export async function parseDailySummary(file: File): Promise<DailyMetric[]> {
   const keyUnits = getRequiredKey(raw[0], "units_sold", file.name);
   const keyRev = getRequiredKey(raw[0], "revenue", file.name);
 
-  return raw.map((row) => ({
-    metric_date: isoDate(row[keyDate]),
-    visitors: numberValue(row[keyVisitors]),
-    views: numberValue(row[keyViews]),
-    carts: numberValue(row[keyCarts]),
-    orders: numberValue(row[keyOrders]),
-    conversion_rate: stringValue(row[keyConv]),
-    units_sold: numberValue(row[keyUnits]),
-    revenue: numberValue(row[keyRev]),
-    source_file: file.name,
-  }));
+  const rows = raw
+    .map((row) => ({
+      metric_date: isoDate(row[keyDate]),
+      visitors: numberValue(row[keyVisitors]),
+      views: numberValue(row[keyViews]),
+      carts: numberValue(row[keyCarts]),
+      orders: numberValue(row[keyOrders]),
+      conversion_rate: stringValue(row[keyConv]),
+      units_sold: numberValue(row[keyUnits]),
+      revenue: numberValue(row[keyRev]),
+      source_file: file.name,
+    }))
+    .filter((row) => isValidIsoDate(row.metric_date));
+
+  if (!rows.length) {
+    throw new Error(`'${file.name}' 파일에서 유효한 날짜 행을 찾지 못했습니다. 날짜 컬럼 값을 확인해 주세요.`);
+  }
+
+  return rows;
 }
 
 export async function parseVendorItems(file: File): Promise<VendorImport> {
@@ -191,6 +203,9 @@ export function findMatchedDate(report: VendorImport, daily: DailyMetric[]): str
 }
 
 export function withMetricDate(report: VendorImport, metricDate: string): ItemMetric[] {
+  if (!isValidIsoDate(metricDate)) {
+    throw new Error(`${report.source_file}의 날짜가 비어 있거나 올바르지 않습니다. 저장 전 날짜를 선택해 주세요.`);
+  }
   return report.rows.map((row) => ({ ...row, metric_date: metricDate }));
 }
 
