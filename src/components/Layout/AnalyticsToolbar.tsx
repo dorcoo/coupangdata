@@ -64,14 +64,30 @@ export default function AnalyticsToolbar({
     applyFilters();
   }
 
+  function applyFulfillmentFilter(value: string) {
+    setDraftFulfillmentFilter(value);
+    onQuery(draftQuery);
+    onFromDate(draftFromDate);
+    onToDate(draftToDate);
+    onFulfillmentFilter(value);
+  }
+
   function period(days: number | null) {
+    let nextFromDate = "";
+    let nextToDate = "";
     if (!maximum || days === null) {
-      setDraftFromDate("");
-      setDraftToDate("");
-      return;
+      nextFromDate = "";
+      nextToDate = "";
+    } else {
+      nextFromDate = shiftDate(maximum, -days + 1);
+      nextToDate = maximum;
     }
-    setDraftFromDate(shiftDate(maximum, -days + 1));
-    setDraftToDate(maximum);
+    setDraftFromDate(nextFromDate);
+    setDraftToDate(nextToDate);
+    onQuery(draftQuery);
+    onFromDate(nextFromDate);
+    onToDate(nextToDate);
+    onFulfillmentFilter(draftFulfillmentFilter);
   }
 
   return (
@@ -89,21 +105,21 @@ export default function AnalyticsToolbar({
         <button
           type="button"
           className={draftFulfillmentFilter === "all" ? "active" : ""}
-          onClick={() => setDraftFulfillmentFilter("all")}
+          onClick={() => applyFulfillmentFilter("all")}
         >
           전체 방식
         </button>
         <button
           type="button"
           className={draftFulfillmentFilter === "로켓그로스" ? "active" : ""}
-          onClick={() => setDraftFulfillmentFilter("로켓그로스")}
+          onClick={() => applyFulfillmentFilter("로켓그로스")}
         >
           로켓그로스
         </button>
         <button
           type="button"
           className={draftFulfillmentFilter === "판매자배송" ? "active" : ""}
-          onClick={() => setDraftFulfillmentFilter("판매자배송")}
+          onClick={() => applyFulfillmentFilter("판매자배송")}
         >
           판매자배송
         </button>
