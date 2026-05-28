@@ -25,7 +25,9 @@ function shiftDate(date: string, days: number): string {
 }
 
 function maximumReportDate(allDates: string[]): string {
-  return allDates[allDates.length - 1] ?? "";
+  const yesterday = shiftDate(localIsoDate(new Date()), -1);
+  const settledDates = allDates.filter((date) => date <= yesterday);
+  return settledDates[settledDates.length - 1] ?? allDates[allDates.length - 1] ?? "";
 }
 
 export default function AnalyticsToolbar({
