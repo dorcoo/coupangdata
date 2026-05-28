@@ -22,6 +22,8 @@
 
 ## 실행
 
+배포 URL: <https://dorcoo.github.io/coupangdata/>
+
 가장 간단한 방법은 `판매량 분석기 실행.cmd`를 더블클릭하는 것입니다. 서버가 실행되고 브라우저가 자동으로 열립니다.
 
 ```powershell
