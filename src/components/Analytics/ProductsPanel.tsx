@@ -17,7 +17,16 @@ export default function ProductsPanel({
   compact = false,
 }: ProductsPanelProps) {
   const [sortKey, setSortKey] = useState<
-    "productId" | "optionId" | "name" | "units" | "unitShare" | "revenue" | "revenueShare" | "conversion" | "winner"
+    | "productId"
+    | "optionId"
+    | "name"
+    | "views"
+    | "units"
+    | "unitShare"
+    | "revenue"
+    | "revenueShare"
+    | "conversion"
+    | "winner"
   >("revenue");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
@@ -32,6 +41,7 @@ export default function ProductsPanel({
       optionId,
       name: values[0].option_name,
       productId: values[0].registered_product_id,
+      views: pivotValue(values, "views"),
       units: pivotValue(values, "units_sold"),
       revenue: pivotValue(values, "revenue"),
       unitShare: totalUnits ? (pivotValue(values, "units_sold") / totalUnits) * 100 : 0,
@@ -49,11 +59,12 @@ export default function ProductsPanel({
   async function exportProducts() {
     await downloadXlsx(
       [
-        ["상품ID", "옵션ID", "옵션명", "수량", "수량 비중(%)", "매출(원)", "매출 비중(%)", "전환율(%)", "아이템위너 비율(%)"],
+        ["상품ID", "옵션ID", "옵션명", "조회수", "수량", "수량 비중(%)", "매출(원)", "매출 비중(%)", "전환율(%)", "아이템위너 비율(%)"],
         ...rows.map((row) => [
           row.productId,
           row.optionId,
           row.name,
+          row.views,
           row.units,
           Number(row.unitShare.toFixed(2)),
           row.revenue,
@@ -103,6 +114,12 @@ export default function ProductsPanel({
                   onClick={() => changeSort("name")}
                 />
                 <SortHeader
+                  label="조회수"
+                  active={sortKey === "views"}
+                  direction={sortDirection}
+                  onClick={() => changeSort("views")}
+                />
+                <SortHeader
                   label="수량"
                   active={sortKey === "units"}
                   direction={sortDirection}
@@ -146,6 +163,7 @@ export default function ProductsPanel({
                   <td>{row.productId}</td>
                   <td>{row.optionId}</td>
                   <td>{row.name}</td>
+                  <td>{number(row.views)}회</td>
                   <td>{number(row.units)}</td>
                   <td>{row.unitShare.toFixed(1)}%</td>
                   <td className="value-blue">{number(row.revenue)}원</td>
