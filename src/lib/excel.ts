@@ -74,7 +74,17 @@ function isoDate(value: unknown): string {
     const day = String(value.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
-  return stringValue(value).slice(0, 10);
+  if (typeof value === "number") {
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    excelEpoch.setUTCDate(excelEpoch.getUTCDate() + value);
+    const year = excelEpoch.getUTCFullYear();
+    const month = String(excelEpoch.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(excelEpoch.getUTCDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+  const text = stringValue(value);
+  if (!text || /^(합계|총계|total)$/i.test(text)) return "";
+  return text.replace(/[./]/g, "-").slice(0, 10);
 }
 
 function isValidIsoDate(value: string): boolean {
