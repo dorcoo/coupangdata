@@ -5,6 +5,7 @@ import KpiCards from "./KpiCards";
 import FulfillmentSummary from "./FulfillmentSummary";
 import LineChart from "../Common/LineChart";
 import ProductsPanel from "../Analytics/ProductsPanel";
+import DailyAdBudget from "./DailyAdBudget";
 
 interface DashboardPanelProps {
   items: ItemMetric[];
@@ -34,6 +35,7 @@ export default function DashboardPanel({
   return (
     <>
       <KpiCards items={items} series={series} />
+      <DailyAdBudget series={series} />
       <FulfillmentSummary items={items} />
       <section className="dashboard-card">
         <div className="section-head">
