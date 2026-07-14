@@ -62,6 +62,15 @@ h1, h2, h3, p { margin: 0; }
 .kpi strong { font-size: 25px; letter-spacing: -.05em; }
 .kpi.red strong { color: #e51f48; }
 .kpi small { font-size: 12px; color: #71849c; font-weight: 600; margin-left: 4px; }
+.ad-budget-head { align-items: stretch; gap: 24px; }
+.ad-budget-head > div:first-child { align-self: center; }
+.ad-budget-summary { min-width: 290px; padding: 13px 16px; border: 1px solid #cce9df; border-radius: 12px; background: #f0fbf7; text-align: right; }
+.ad-budget-summary span, .ad-budget-summary small { display: block; color: #60758f; font-size: 11px; font-weight: 700; }
+.ad-budget-summary strong { display: block; margin: 5px 0; color: #00865e; font-size: 24px; letter-spacing: -.04em; }
+.ad-budget-table { max-height: 340px; }
+.ad-budget-table th, .ad-budget-table td { text-align: right; }
+.ad-budget-table th:first-child, .ad-budget-table td:first-child { text-align: left; }
+.ad-budget-recommended { color: #00865e; background: #f0fbf7; font-weight: 800; }
 .dashboard-card { background: white; border-radius: 16px; padding: 19px 19px 18px; margin-bottom: 22px; box-shadow: 0 4px 17px rgba(18, 38, 64, .035); }
 .section-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #edf1f6; padding: 0 4px 15px; margin-bottom: 16px; }
 .section-head h2 { font-size: 16px; letter-spacing: -.035em; }
@@ -244,4 +253,6 @@ code { background: #edf2f7; color: #294b71; padding: 2px 6px; border-radius: 5px
   .detail-header { align-items: flex-start; }
   .detail-header h2 { font-size: 18px; line-height: 1.35; }
   .category-row { grid-template-columns: 1fr; gap: 9px; }
+  .ad-budget-head { flex-direction: column; }
+  .ad-budget-summary { min-width: 0; text-align: left; }
 }
