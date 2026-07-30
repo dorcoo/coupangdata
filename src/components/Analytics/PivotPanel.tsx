@@ -14,14 +14,15 @@ import SortHeader from "../Common/SortHeader";
 
 interface PivotPanelProps {
   items: ItemMetric[];
-  onSelect: (optionId: string) => void;
 }
 
 type GroupKey = "product_name" | "option_name";
+type FulfillmentFilter = "all" | "로켓그로스" | "판매자배송";
 
-export default function PivotPanel({ items, onSelect }: PivotPanelProps) {
+export default function PivotPanel({ items }: PivotPanelProps) {
   const [metric, setMetric] = useState<PivotMetricKey>("revenue");
   const [groupKey, setGroupKey] = useState<GroupKey>("option_name");
+  const [fulfillmentFilter, setFulfillmentFilter] = useState<FulfillmentFilter>("all");
   const [sortKey, setSortKey] = useState<string>("total");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [labelWidth, setLabelWidth] = useState(480);
@@ -32,34 +33,44 @@ export default function PivotPanel({ items, onSelect }: PivotPanelProps) {
   const containerHeight = 980; // 뷰포트 높이
   const rowHeight = 46; // styles.css 상 td 패딩(13px*2) + 폰트(12px) = 약 46px
 
-  const dates = useMemo(() => [...new Set(items.map((item) => item.metric_date))].sort(), [items]);
+  const selectedItems = useMemo(
+    () => items.filter((item) => fulfillmentFilter === "all" || item.fulfillment.trim() === fulfillmentFilter),
+    [items, fulfillmentFilter],
+  );
+
+  const dates = useMemo(() => [...new Set(selectedItems.map((item) => item.metric_date))].sort(), [selectedItems]);
   const visibleDates = dates;
-  const selectedItems = items;
 
   const rows = useMemo(() => {
     const grouped = new Map<string, Map<string, ItemMetric[]>>();
     for (const item of selectedItems) {
-      const label = item[groupKey] || "(상품명 없음)";
-      const values = grouped.get(label) ?? new Map<string, ItemMetric[]>();
+      const identity =
+        groupKey === "product_name"
+          ? item.registered_product_id || `상품명:${item.product_name}`
+          : item.option_id || `옵션명:${item.option_name}`;
+      const values = grouped.get(identity) ?? new Map<string, ItemMetric[]>();
       const dateRows = values.get(item.metric_date) ?? [];
       dateRows.push(item);
       values.set(item.metric_date, dateRows);
-      grouped.set(label, values);
+      grouped.set(identity, values);
     }
     return [...grouped.entries()]
-      .map(([label, dateRows]) => {
+      .map(([, dateRows]) => {
         const values = Object.fromEntries(
           visibleDates.map((date) => [date, pivotValue(dateRows.get(date) ?? [], metric)])
         );
         const allRows = visibleDates.flatMap((date) => dateRows.get(date) ?? []);
         const identity = allRows[0];
+        const optionIds = [...new Set(allRows.map((row) => row.option_id).filter(Boolean))];
         const dailyAverage = visibleDates.length
           ? visibleDates.reduce((total, date) => total + values[date], 0) / visibleDates.length
           : 0;
         return {
-          label,
+          label: identity?.[groupKey] || (groupKey === "product_name" ? "(상품명 없음)" : "(옵션명 없음)"),
           optionId: identity?.option_id ?? "",
+          optionDisplay: groupKey === "product_name" ? `옵션 ${optionIds.length}개` : identity?.option_id ?? "",
           productId: identity?.registered_product_id ?? "",
+          fulfillment: [...new Set(allRows.map((row) => row.fulfillment.trim()).filter(Boolean))].join(", ") || "(판매방식 미지정)",
           values,
           total: pivotValue(allRows, metric),
           dailyAverage,
@@ -72,7 +83,10 @@ export default function PivotPanel({ items, onSelect }: PivotPanelProps) {
         const rightValue = sortKey.startsWith("date:")
           ? right.values[sortKey.slice(5)]
           : right[sortKey as "label" | "optionId" | "productId" | "total" | "dailyAverage"];
-        return compareSort(leftValue ?? 0, rightValue ?? 0, sortDirection);
+        const compared = compareSort(leftValue ?? 0, rightValue ?? 0, sortDirection);
+        if (compared) return compared;
+        const productCompared = compareSort(left.productId, right.productId, "asc");
+        return productCompared || compareSort(left.optionId, right.optionId, "asc");
       });
   }, [selectedItems, groupKey, metric, sortDirection, sortKey, visibleDates]);
 
@@ -110,14 +124,15 @@ export default function PivotPanel({ items, onSelect }: PivotPanelProps) {
   }
 
   async function exportPivot() {
-    const columns = ["상품ID", "옵션ID", "상품/옵션", ...visibleDates, isRatioMetric ? "기간값" : "합계", "일평균"];
+    const columns = ["상품ID", "옵션ID", "판매방식", "상품/옵션", ...visibleDates, isRatioMetric ? "기간값" : "합계", "일평균"];
     await downloadXlsx(
       [
         columns,
-        ["", "", "일별 합계", ...visibleDates.map((date) => dailyTotals[date] ?? 0), periodTotal, periodDailyAverage],
+        ["", "", fulfillmentFilter === "all" ? "전체" : fulfillmentFilter, "일별 합계", ...visibleDates.map((date) => dailyTotals[date] ?? 0), periodTotal, periodDailyAverage],
         ...rows.map((row) => [
           row.productId,
-          row.optionId,
+          row.optionDisplay,
+          row.fulfillment,
           row.label,
           ...visibleDates.map((date) => row.values[date] ?? 0),
           row.total,
@@ -148,6 +163,14 @@ export default function PivotPanel({ items, onSelect }: PivotPanelProps) {
           <h2>▤ 직관적인 피벗 (Pivot)</h2>
           <div className="pivot-controls">
             <label>
+              판매방식
+              <select value={fulfillmentFilter} onChange={(event) => setFulfillmentFilter(event.target.value as FulfillmentFilter)}>
+                <option value="all">전체</option>
+                <option value="로켓그로스">로켓그로스</option>
+                <option value="판매자배송">판매자배송</option>
+              </select>
+            </label>
+            <label>
               지표
               <select value={metric} onChange={(event) => setMetric(event.target.value as PivotMetricKey)}>
                 {Object.entries(metricLabels).map(([key, label]) => (
@@ -160,8 +183,8 @@ export default function PivotPanel({ items, onSelect }: PivotPanelProps) {
             <label>
               행 기준
               <select value={groupKey} onChange={(event) => setGroupKey(event.target.value as GroupKey)}>
-                <option value="product_name">상품명</option>
-                <option value="option_name">옵션명</option>
+                <option value="product_name">상품 ID별</option>
+                <option value="option_name">옵션 ID별</option>
               </select>
             </label>
             <button type="button" className="export" onClick={exportPivot}>
@@ -197,7 +220,7 @@ export default function PivotPanel({ items, onSelect }: PivotPanelProps) {
                     className="pivot-sticky-col pivot-col-product-id"
                   />
                   <SortHeader
-                    label="옵션ID"
+                    label={groupKey === "product_name" ? "옵션" : "옵션ID"}
                     active={sortKey === "optionId"}
                     direction={sortDirection}
                     onClick={() => changeSort("optionId")}
@@ -266,9 +289,9 @@ export default function PivotPanel({ items, onSelect }: PivotPanelProps) {
 
                 {/* 실제 브라우저 화면에 보이는 Row 목록 */}
                 {visibleRows.map((row) => (
-                  <tr key={row.label} onClick={() => onSelect(row.optionId)}>
+                  <tr key={groupKey === "product_name" ? `product:${row.productId}` : `option:${row.optionId}`}>
                     <td className="pivot-sticky-col pivot-col-product-id">{row.productId}</td>
-                    <td className="pivot-sticky-col pivot-col-option-id">{row.optionId}</td>
+                    <td className="pivot-sticky-col pivot-col-option-id">{row.optionDisplay}</td>
                     <td className="pivot-sticky-col pivot-col-label" title={row.label}>
                       {row.label}
                     </td>
@@ -291,6 +314,7 @@ export default function PivotPanel({ items, onSelect }: PivotPanelProps) {
           </div>
         )}
         <p className="caption">전체 {number(rows.length)}개 행을 표시합니다. 일평균은 조회 기간의 날짜 수를 기준으로 계산합니다.</p>
+        <p className="caption">피벗 판매방식 기준: {fulfillmentFilter === "all" ? "전체" : fulfillmentFilter}</p>
         {isRatioMetric && (
           <p className="caption">
             {metric === "conversion_rate" && "구매전환율은 주문 / 조회로 계산합니다."}

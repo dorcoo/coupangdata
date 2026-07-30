@@ -65,7 +65,7 @@ export function displayMetric(value: number, metric: PivotMetricKey): string {
 export function compareSort(left: string | number, right: string | number, direction: SortDirection): number {
   const compared = typeof left === "number" && typeof right === "number"
     ? left - right
-    : String(left).localeCompare(String(right), "ko");
+    : String(left).localeCompare(String(right), "ko", { numeric: true, sensitivity: "base" });
   return direction === "asc" ? compared : -compared;
 }
 

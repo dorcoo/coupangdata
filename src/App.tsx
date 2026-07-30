@@ -17,7 +17,6 @@ import PivotPanel from "./components/Analytics/PivotPanel";
 import ProductsPanel from "./components/Analytics/ProductsPanel";
 import ImportPanel from "./components/Settings/ImportPanel";
 import SetupPanel from "./components/Settings/SetupPanel";
-import ProductDetailModal from "./components/Modals/ProductDetailModal";
 
 export default function App() {
   const [view, setView] = useState<View>("dashboard");
@@ -30,7 +29,6 @@ export default function App() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [fulfillmentFilter, setFulfillmentFilter] = useState<string>("all");
-  const [selectedProduct, setSelectedProduct] = useState<ItemMetric[] | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const initialPeriodSet = useRef(false);
 
@@ -87,16 +85,19 @@ export default function App() {
     initialPeriodSet.current = true;
   }, [allDates, fromDate, toDate]);
 
-  // 검색, 날짜 범위, 판매방식 필터 가공
-  const filteredItems = items.filter(
+  // 검색, 날짜 범위 필터 가공
+  const baseFilteredItems = items.filter(
     (item) =>
       (!fromDate || item.metric_date >= fromDate) &&
       (!toDate || item.metric_date <= toDate) &&
-      (fulfillmentFilter === "all" || item.fulfillment.trim() === fulfillmentFilter) &&
       (!query ||
-        `${item.product_name} ${item.option_name} ${item.option_id}`
+        `${item.product_name} ${item.registered_product_id} ${item.option_name} ${item.option_id}`
           .toLowerCase()
           .includes(query.toLowerCase())),
+  );
+
+  const filteredItems = baseFilteredItems.filter(
+    (item) => fulfillmentFilter === "all" || item.fulfillment.trim() === fulfillmentFilter,
   );
 
   const filteredDaily = daily.filter(
@@ -168,36 +169,16 @@ export default function App() {
             <DashboardPanel
               items={filteredItems}
               series={series}
-              onSelect={(optionId) =>
-                setSelectedProduct(filteredItems.filter((item) => item.option_id === optionId))
-              }
             />
           )}
           {view === "trend" && <TrendPanel series={series} items={filteredItems} />}
           {view === "categories" && <CategoryPanel items={filteredItems} />}
-          {view === "winner" && (
-            <WinnerRiskPanel
-              items={filteredItems}
-              onSelect={(optionId) =>
-                setSelectedProduct(filteredItems.filter((item) => item.option_id === optionId))
-              }
-            />
-          )}
+          {view === "winner" && <WinnerRiskPanel items={filteredItems} />}
           {view === "pivot" && (
-            <PivotPanel
-              items={filteredItems}
-              onSelect={(optionId) =>
-                setSelectedProduct(filteredItems.filter((item) => item.option_id === optionId))
-              }
-            />
+            <PivotPanel items={baseFilteredItems} />
           )}
           {view === "products" && (
-            <ProductsPanel
-              items={filteredItems}
-              onSelect={(optionId) =>
-                setSelectedProduct(filteredItems.filter((item) => item.option_id === optionId))
-              }
-            />
+            <ProductsPanel items={filteredItems} />
           )}
           {view === "import" && (
             <ImportPanel
@@ -212,9 +193,6 @@ export default function App() {
           {view === "setup" && <SetupPanel session={session} onMessage={setMessage} />}
         </main>
       </div>
-      {selectedProduct && selectedProduct.length > 0 && (
-        <ProductDetailModal items={selectedProduct} onClose={() => setSelectedProduct(null)} />
-      )}
     </div>
   );
 }

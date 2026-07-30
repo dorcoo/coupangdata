@@ -7,10 +7,9 @@ import WinnerBadge from "../Common/WinnerBadge";
 
 interface WinnerRiskPanelProps {
   items: ItemMetric[];
-  onSelect: (optionId: string) => void;
 }
 
-export default function WinnerRiskPanel({ items, onSelect }: WinnerRiskPanelProps) {
+export default function WinnerRiskPanel({ items }: WinnerRiskPanelProps) {
   const [filter, setFilter] = useState<"all" | "danger" | "zero">("all");
   const [sortKey, setSortKey] = useState<"productId" | "optionId" | "name" | "winner" | "views" | "units" | "revenue">("winner");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -177,7 +176,7 @@ export default function WinnerRiskPanel({ items, onSelect }: WinnerRiskPanelProp
               </thead>
               <tbody>
                 {visible.map((row) => (
-                  <tr key={row.optionId} onClick={() => onSelect(row.optionId)}>
+                  <tr key={row.optionId}>
                     <td>{row.productId}</td>
                     <td>{row.optionId}</td>
                     <td>{row.name}</td>
