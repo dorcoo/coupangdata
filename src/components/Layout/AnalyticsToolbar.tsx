@@ -98,7 +98,7 @@ export default function AnalyticsToolbar({
           value={draftQuery}
           onChange={(event) => setDraftQuery(event.target.value)}
           onKeyDown={applySearch}
-          placeholder="상품 또는 옵션 검색"
+          placeholder="상품명·상품ID·옵션명·옵션ID 검색"
         />
       </label>
       <div className="segmented">

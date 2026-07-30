@@ -7,15 +7,16 @@ import WinnerBadge from "../Common/WinnerBadge";
 
 interface ProductsPanelProps {
   items: ItemMetric[];
-  onSelect: (optionId: string) => void;
   compact?: boolean;
 }
 
+type GroupMode = "product" | "option";
+
 export default function ProductsPanel({
   items,
-  onSelect,
   compact = false,
 }: ProductsPanelProps) {
+  const [groupMode, setGroupMode] = useState<GroupMode>("product");
   const [sortKey, setSortKey] = useState<
     | "productId"
     | "optionId"
@@ -34,22 +35,41 @@ export default function ProductsPanel({
   const totalRevenue = pivotValue(items, "revenue");
 
   const grouped = new Map<string, ItemMetric[]>();
-  items.forEach((item) => grouped.set(item.option_id, [...(grouped.get(item.option_id) ?? []), item]));
+  items.forEach((item) => {
+    const identity =
+      groupMode === "product"
+        ? item.registered_product_id || `상품명:${item.product_name}`
+        : item.option_id || `옵션명:${item.option_name}`;
+    grouped.set(identity, [...(grouped.get(identity) ?? []), item]);
+  });
 
   const rows = [...grouped.entries()]
-    .map(([optionId, values]) => ({
-      optionId,
-      name: values[0].option_name,
-      productId: values[0].registered_product_id,
-      views: pivotValue(values, "views"),
-      units: pivotValue(values, "units_sold"),
-      revenue: pivotValue(values, "revenue"),
-      unitShare: totalUnits ? (pivotValue(values, "units_sold") / totalUnits) * 100 : 0,
-      revenueShare: totalRevenue ? (pivotValue(values, "revenue") / totalRevenue) * 100 : 0,
-      conversion: pivotValue(values, "conversion_rate"),
-      winner: pivotValue(values, "winner_rate"),
-    }))
-    .sort((left, right) => compareSort(left[sortKey], right[sortKey], sortDirection));
+    .map(([, values]) => {
+      const optionIds = [...new Set(values.map((item) => item.option_id).filter(Boolean))];
+      const optionId = values[0].option_id;
+      return {
+        optionId,
+        optionDisplay: groupMode === "product" ? `${number(optionIds.length)}개` : optionId,
+        optionSortValue: groupMode === "product" ? optionIds.length : optionId,
+        name: groupMode === "product" ? values[0].product_name : values[0].option_name,
+        productId: values[0].registered_product_id,
+        views: pivotValue(values, "views"),
+        units: pivotValue(values, "units_sold"),
+        revenue: pivotValue(values, "revenue"),
+        unitShare: totalUnits ? (pivotValue(values, "units_sold") / totalUnits) * 100 : 0,
+        revenueShare: totalRevenue ? (pivotValue(values, "revenue") / totalRevenue) * 100 : 0,
+        conversion: pivotValue(values, "conversion_rate"),
+        winner: pivotValue(values, "winner_rate"),
+      };
+    })
+    .sort((left, right) => {
+      const leftValue = sortKey === "optionId" ? left.optionSortValue : left[sortKey];
+      const rightValue = sortKey === "optionId" ? right.optionSortValue : right[sortKey];
+      const compared = compareSort(leftValue, rightValue, sortDirection);
+      if (compared) return compared;
+      const productCompared = compareSort(left.productId, right.productId, "asc");
+      return productCompared || compareSort(left.optionId, right.optionId, "asc");
+    });
 
   function changeSort(nextKey: typeof sortKey) {
     setSortDirection(sortKey === nextKey && sortDirection === "desc" ? "asc" : "desc");
@@ -59,10 +79,10 @@ export default function ProductsPanel({
   async function exportProducts() {
     await downloadXlsx(
       [
-        ["상품ID", "옵션ID", "옵션명", "조회수", "수량", "수량 비중(%)", "매출(원)", "매출 비중(%)", "전환율(%)", "아이템위너 비율(%)"],
+        ["상품ID", groupMode === "product" ? "옵션 수" : "옵션ID", groupMode === "product" ? "상품명" : "옵션명", "조회수", "수량", "수량 비중(%)", "매출(원)", "매출 비중(%)", "전환율(%)", "아이템위너 비율(%)"],
         ...rows.map((row) => [
           row.productId,
-          row.optionId,
+          row.optionDisplay,
           row.name,
           row.views,
           row.units,
@@ -84,9 +104,27 @@ export default function ProductsPanel({
           ☷ {compact ? "세부 데이터 내역" : "상품/옵션 실적"}{" "}
           <small className="row-count">{number(rows.length)}건</small>
         </h2>
-        <button type="button" className="export" onClick={exportProducts}>
-          엑셀 다운로드
-        </button>
+        <div className="section-actions">
+          <div className="segmented" aria-label="상품 실적 묶음 기준">
+            <button
+              type="button"
+              className={groupMode === "product" ? "active" : ""}
+              onClick={() => setGroupMode("product")}
+            >
+              상품 ID별
+            </button>
+            <button
+              type="button"
+              className={groupMode === "option" ? "active" : ""}
+              onClick={() => setGroupMode("option")}
+            >
+              옵션 ID별
+            </button>
+          </div>
+          <button type="button" className="export" onClick={exportProducts}>
+            엑셀 다운로드
+          </button>
+        </div>
       </div>
       {!rows.length ? (
         <div className="empty">상품 파일을 업로드하면 실적 목록과 상세 추이가 표시됩니다.</div>
@@ -102,13 +140,13 @@ export default function ProductsPanel({
                   onClick={() => changeSort("productId")}
                 />
                 <SortHeader
-                  label="옵션ID"
+                  label={groupMode === "product" ? "옵션 수" : "옵션ID"}
                   active={sortKey === "optionId"}
                   direction={sortDirection}
                   onClick={() => changeSort("optionId")}
                 />
                 <SortHeader
-                  label="옵션명"
+                  label={groupMode === "product" ? "상품명" : "옵션명"}
                   active={sortKey === "name"}
                   direction={sortDirection}
                   onClick={() => changeSort("name")}
@@ -159,9 +197,9 @@ export default function ProductsPanel({
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.optionId} onClick={() => onSelect(row.optionId)}>
+                <tr key={groupMode === "product" ? `product:${row.productId}` : `option:${row.optionId}`}>
                   <td>{row.productId}</td>
-                  <td>{row.optionId}</td>
+                  <td>{row.optionDisplay}</td>
                   <td>{row.name}</td>
                   <td>{number(row.views)}회</td>
                   <td>{number(row.units)}</td>

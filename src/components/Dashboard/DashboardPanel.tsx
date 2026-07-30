@@ -10,13 +10,11 @@ import DailyAdBudget from "./DailyAdBudget";
 interface DashboardPanelProps {
   items: ItemMetric[];
   series: TrendPoint[];
-  onSelect: (optionId: string) => void;
 }
 
 export default function DashboardPanel({
   items,
   series,
-  onSelect,
 }: DashboardPanelProps) {
   const [metric, setMetric] = useState<ChartMetric>("units");
   const itemSeries = buildTrendSeries([], items, true);
@@ -62,7 +60,7 @@ export default function DashboardPanel({
           fill
         />
       </section>
-      <ProductsPanel items={items} onSelect={onSelect} compact />
+      <ProductsPanel items={items} compact />
     </>
   );
 }
