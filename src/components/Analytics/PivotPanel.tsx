@@ -23,6 +23,7 @@ export default function PivotPanel({ items }: PivotPanelProps) {
   const [metric, setMetric] = useState<PivotMetricKey>("revenue");
   const [groupKey, setGroupKey] = useState<GroupKey>("option_name");
   const [fulfillmentFilter, setFulfillmentFilter] = useState<FulfillmentFilter>("all");
+  const [heatmapEnabled, setHeatmapEnabled] = useState(true);
   const [sortKey, setSortKey] = useState<string>("total");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [labelWidth, setLabelWidth] = useState(480);
@@ -96,6 +97,32 @@ export default function PivotPanel({ items }: PivotPanelProps) {
     metric === "cancelled_units" ||
     metric === "immediately_cancelled_units" ||
     metric === "cancellation_rate";
+
+  const heatmapScale = useMemo(() => {
+    const dateMaximums = Object.fromEntries(
+      visibleDates.map((date) => [
+        date,
+        Math.max(0, ...rows.map((row) => Math.abs(row.values[date] ?? 0))),
+      ]),
+    );
+    return {
+      dateMaximums,
+      totalMaximum: Math.max(0, ...rows.map((row) => Math.abs(row.total))),
+      dailyAverageMaximum: Math.max(0, ...rows.map((row) => Math.abs(row.dailyAverage))),
+    };
+  }, [rows, visibleDates]);
+
+  function heatmapStyle(value: number, maximum: number): CSSProperties | undefined {
+    if (!heatmapEnabled || maximum <= 0 || value === 0) return undefined;
+    const ratio = Math.min(1, Math.abs(value) / maximum);
+    const alpha = 0.08 + ratio * 0.48;
+    const color = isCancellationMetric
+      ? `rgba(239, 68, 68, ${alpha})`
+      : isRatioMetric
+        ? `rgba(16, 185, 129, ${alpha})`
+        : `rgba(37, 99, 235, ${alpha})`;
+    return { backgroundColor: color };
+  }
 
   const dailyTotals = Object.fromEntries(
     visibleDates.map((date) => [date, pivotValue(selectedItems.filter((item) => item.metric_date === date), metric)])
@@ -187,6 +214,14 @@ export default function PivotPanel({ items }: PivotPanelProps) {
                 <option value="option_name">옵션 ID별</option>
               </select>
             </label>
+            <button
+              type="button"
+              className={`heatmap-toggle ${heatmapEnabled ? "active" : ""}`}
+              aria-pressed={heatmapEnabled}
+              onClick={() => setHeatmapEnabled((enabled) => !enabled)}
+            >
+              히트맵 {heatmapEnabled ? "ON" : "OFF"}
+            </button>
             <button type="button" className="export" onClick={exportPivot}>
               피벗 엑셀 다운로드
             </button>
@@ -296,10 +331,26 @@ export default function PivotPanel({ items }: PivotPanelProps) {
                       {row.label}
                     </td>
                     {visibleDates.map((date) => (
-                      <td key={date}>{displayMetric(row.values[date] ?? 0, metric)}</td>
+                      <td
+                        key={date}
+                        className="heatmap-cell"
+                        style={heatmapStyle(row.values[date] ?? 0, heatmapScale.dateMaximums[date] ?? 0)}
+                      >
+                        {displayMetric(row.values[date] ?? 0, metric)}
+                      </td>
                     ))}
-                    <td className="total">{displayMetric(row.total, metric)}</td>
-                    <td className="total">{displayMetric(row.dailyAverage, metric)}</td>
+                    <td
+                      className="total heatmap-cell"
+                      style={heatmapStyle(row.total, heatmapScale.totalMaximum)}
+                    >
+                      {displayMetric(row.total, metric)}
+                    </td>
+                    <td
+                      className="total heatmap-cell"
+                      style={heatmapStyle(row.dailyAverage, heatmapScale.dailyAverageMaximum)}
+                    >
+                      {displayMetric(row.dailyAverage, metric)}
+                    </td>
                   </tr>
                 ))}
 
@@ -315,6 +366,14 @@ export default function PivotPanel({ items }: PivotPanelProps) {
         )}
         <p className="caption">전체 {number(rows.length)}개 행을 표시합니다. 일평균은 조회 기간의 날짜 수를 기준으로 계산합니다.</p>
         <p className="caption">피벗 판매방식 기준: {fulfillmentFilter === "all" ? "전체" : fulfillmentFilter}</p>
+        {heatmapEnabled && rows.length > 0 && (
+          <div className={`heatmap-legend ${isCancellationMetric ? "danger" : isRatioMetric ? "ratio" : "value"}`}>
+            <span>낮음</span>
+            <i aria-hidden="true" />
+            <span>높음</span>
+            <small>각 날짜 열 안에서 상대적인 값의 크기를 색 농도로 표시합니다.</small>
+          </div>
+        )}
         {isRatioMetric && (
           <p className="caption">
             {metric === "conversion_rate" && "구매전환율은 주문 / 조회로 계산합니다."}
