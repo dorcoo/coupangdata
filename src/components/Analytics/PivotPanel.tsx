@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type CSSProperties, type UIEvent } from "react";
 import type { ItemMetric, PivotMetricKey } from "../../types";
-import { downloadXlsx } from "../../lib/excel";
+import { downloadHeatmapXlsx } from "../../lib/excel";
 import {
   compareSort,
   displayMetric,
@@ -139,21 +139,30 @@ export default function PivotPanel({ items }: PivotPanelProps) {
 
   async function exportPivot() {
     const columns = ["상품ID", "옵션ID", "판매방식", "상품/옵션", ...visibleDates, isRatioMetric ? "기간값" : "합계", "일평균"];
-    await downloadXlsx(
-      [
-        columns,
-        ["", "", fulfillmentFilter === "all" ? "전체" : fulfillmentFilter, "일별 합계", ...visibleDates.map((date) => dailyTotals[date] ?? 0), periodTotal, periodDailyAverage],
-        ...rows.map((row) => [
-          row.productId,
-          row.optionDisplay,
-          row.fulfillment,
-          row.label,
-          ...visibleDates.map((date) => row.values[date] ?? 0),
-          row.total,
-          row.dailyAverage,
-        ]),
-      ],
+    const exportRows = [
+      columns,
+      ["", "", fulfillmentFilter === "all" ? "전체" : fulfillmentFilter, "일별 합계", ...visibleDates.map((date) => dailyTotals[date] ?? 0), periodTotal, periodDailyAverage],
+      ...rows.map((row) => [
+        row.productId,
+        row.optionDisplay,
+        row.fulfillment,
+        row.label,
+        ...visibleDates.map((date) => row.values[date] ?? 0),
+        row.total,
+        row.dailyAverage,
+      ]),
+    ];
+    await downloadHeatmapXlsx(
+      exportRows,
       "coupang-pivot.xlsx",
+      {
+        dataStartRow: 2,
+        heatmapStartColumn: 4,
+        heatmapEndColumn: 3 + visibleDates.length,
+        totalStartColumn: 4 + visibleDates.length,
+        color: isCancellationMetric ? "red" : isRatioMetric ? "green" : "blue",
+        ratioMetric: isRatioMetric,
+      },
     );
   }
 

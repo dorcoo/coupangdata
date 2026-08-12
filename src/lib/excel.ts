@@ -226,3 +226,118 @@ export async function downloadXlsx(rows: Array<Array<string | number>>, filename
   XLSX.utils.book_append_sheet(workbook, worksheet, "분석");
   XLSX.writeFile(workbook, filename);
 }
+
+interface HeatmapXlsxOptions {
+  dataStartRow: number;
+  heatmapStartColumn: number;
+  heatmapEndColumn: number;
+  totalStartColumn: number;
+  color: "blue" | "green" | "red";
+  ratioMetric?: boolean;
+}
+
+const heatmapColors = {
+  blue: [37, 99, 235],
+  green: [16, 185, 129],
+  red: [239, 68, 68],
+} as const;
+
+function blendWithWhite(rgb: readonly number[], ratio: number): string {
+  const alpha = 0.08 + Math.min(1, Math.max(0, ratio)) * 0.48;
+  return rgb
+    .map((channel) => Math.round(255 + (channel - 255) * alpha).toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase();
+}
+
+export async function downloadHeatmapXlsx(
+  rows: Array<Array<string | number>>,
+  filename: string,
+  options: HeatmapXlsxOptions,
+): Promise<void> {
+  const styledModule = await import("xlsx-js-style");
+  const XLSX = (styledModule as unknown as { default?: typeof styledModule }).default ?? styledModule;
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet(rows);
+  const lastColumn = Math.max(0, ...rows.map((row) => row.length - 1));
+  const border = {
+    bottom: { style: "thin" as const, color: { rgb: "E2E8F0" } },
+  };
+
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    for (let columnIndex = 0; columnIndex <= lastColumn; columnIndex += 1) {
+      const address = XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex });
+      const cell = worksheet[address];
+      if (!cell) continue;
+      cell.s = {
+        fill: { patternType: "solid", fgColor: { rgb: "FFFFFF" } },
+        font: { name: "맑은 고딕", sz: 10, color: { rgb: "334A62" } },
+        alignment: { horizontal: columnIndex < options.heatmapStartColumn ? "left" : "right", vertical: "center" },
+        border,
+      };
+      if (typeof cell.v === "number") {
+        cell.s.numFmt = options.ratioMetric ? '0.00"%"' : "#,##0";
+      }
+    }
+  }
+
+  for (let columnIndex = 0; columnIndex <= lastColumn; columnIndex += 1) {
+    const cell = worksheet[XLSX.utils.encode_cell({ r: 0, c: columnIndex })];
+    if (!cell) continue;
+    cell.s = {
+      ...cell.s,
+      fill: { patternType: "solid", fgColor: { rgb: "1E3A5F" } },
+      font: { name: "맑은 고딕", sz: 10, bold: true, color: { rgb: "FFFFFF" } },
+      alignment: { horizontal: "center", vertical: "center" },
+    };
+  }
+
+  for (let columnIndex = 0; columnIndex <= lastColumn; columnIndex += 1) {
+    const cell = worksheet[XLSX.utils.encode_cell({ r: 1, c: columnIndex })];
+    if (!cell) continue;
+    cell.s = {
+      ...cell.s,
+      fill: { patternType: "solid", fgColor: { rgb: "DFEAF6" } },
+      font: { name: "맑은 고딕", sz: 10, bold: true, color: { rgb: "17324F" } },
+    };
+  }
+
+  const baseColor = heatmapColors[options.color];
+  for (let rowIndex = options.dataStartRow; rowIndex < rows.length; rowIndex += 1) {
+    const values = rows[rowIndex]
+      .slice(options.heatmapStartColumn, options.heatmapEndColumn + 1)
+      .map((value) => typeof value === "number" ? Math.abs(value) : 0);
+    const maximum = Math.max(0, ...values);
+    if (maximum <= 0) continue;
+    values.forEach((value, offset) => {
+      if (value === 0) return;
+      const address = XLSX.utils.encode_cell({ r: rowIndex, c: options.heatmapStartColumn + offset });
+      const cell = worksheet[address];
+      if (!cell) return;
+      cell.s = {
+        ...cell.s,
+        fill: { patternType: "solid", fgColor: { rgb: blendWithWhite(baseColor, value / maximum) } },
+      };
+    });
+  }
+
+  for (let rowIndex = options.dataStartRow; rowIndex < rows.length; rowIndex += 1) {
+    for (let columnIndex = options.totalStartColumn; columnIndex <= lastColumn; columnIndex += 1) {
+      const cell = worksheet[XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex })];
+      if (!cell) continue;
+      cell.s = {
+        ...cell.s,
+        fill: { patternType: "solid", fgColor: { rgb: "F0F7FF" } },
+        font: { name: "맑은 고딕", sz: 10, bold: true, color: { rgb: "17324F" } },
+      };
+    }
+  }
+
+  worksheet["!cols"] = rows[0].map((_, columnIndex) => ({
+    wch: columnIndex === 3 ? 42 : columnIndex < 3 ? 16 : 14,
+  }));
+  worksheet["!rows"] = rows.map((_, rowIndex) => ({ hpt: rowIndex === 0 ? 24 : 20 }));
+  worksheet["!autofilter"] = { ref: XLSX.utils.encode_range({ r: 0, c: 0 }, { r: rows.length - 1, c: lastColumn }) };
+  XLSX.utils.book_append_sheet(workbook, worksheet, "피벗 분석");
+  XLSX.writeFile(workbook, filename);
+}
