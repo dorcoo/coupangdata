@@ -73,6 +73,7 @@ export default function PivotPanel({ items }: PivotPanelProps) {
           productId: identity?.registered_product_id ?? "",
           fulfillment: [...new Set(allRows.map((row) => row.fulfillment.trim()).filter(Boolean))].join(", ") || "(판매방식 미지정)",
           values,
+          heatMaximum: Math.max(0, ...visibleDates.map((date) => Math.abs(values[date] ?? 0))),
           total: pivotValue(allRows, metric),
           dailyAverage,
         };
@@ -97,20 +98,6 @@ export default function PivotPanel({ items }: PivotPanelProps) {
     metric === "cancelled_units" ||
     metric === "immediately_cancelled_units" ||
     metric === "cancellation_rate";
-
-  const heatmapScale = useMemo(() => {
-    const dateMaximums = Object.fromEntries(
-      visibleDates.map((date) => [
-        date,
-        Math.max(0, ...rows.map((row) => Math.abs(row.values[date] ?? 0))),
-      ]),
-    );
-    return {
-      dateMaximums,
-      totalMaximum: Math.max(0, ...rows.map((row) => Math.abs(row.total))),
-      dailyAverageMaximum: Math.max(0, ...rows.map((row) => Math.abs(row.dailyAverage))),
-    };
-  }, [rows, visibleDates]);
 
   function heatmapStyle(value: number, maximum: number): CSSProperties | undefined {
     if (!heatmapEnabled || maximum <= 0 || value === 0) return undefined;
@@ -334,23 +321,13 @@ export default function PivotPanel({ items }: PivotPanelProps) {
                       <td
                         key={date}
                         className="heatmap-cell"
-                        style={heatmapStyle(row.values[date] ?? 0, heatmapScale.dateMaximums[date] ?? 0)}
+                        style={heatmapStyle(row.values[date] ?? 0, row.heatMaximum)}
                       >
                         {displayMetric(row.values[date] ?? 0, metric)}
                       </td>
                     ))}
-                    <td
-                      className="total heatmap-cell"
-                      style={heatmapStyle(row.total, heatmapScale.totalMaximum)}
-                    >
-                      {displayMetric(row.total, metric)}
-                    </td>
-                    <td
-                      className="total heatmap-cell"
-                      style={heatmapStyle(row.dailyAverage, heatmapScale.dailyAverageMaximum)}
-                    >
-                      {displayMetric(row.dailyAverage, metric)}
-                    </td>
+                    <td className="total">{displayMetric(row.total, metric)}</td>
+                    <td className="total">{displayMetric(row.dailyAverage, metric)}</td>
                   </tr>
                 ))}
 
@@ -371,7 +348,7 @@ export default function PivotPanel({ items }: PivotPanelProps) {
             <span>낮음</span>
             <i aria-hidden="true" />
             <span>높음</span>
-            <small>각 날짜 열 안에서 상대적인 값의 크기를 색 농도로 표시합니다.</small>
+            <small>각 상품 행 안에서 날짜별 값의 상대적인 크기를 색 농도로 표시합니다.</small>
           </div>
         )}
         {isRatioMetric && (
