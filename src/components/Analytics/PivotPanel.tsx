@@ -152,18 +152,22 @@ export default function PivotPanel({ items }: PivotPanelProps) {
         row.dailyAverage,
       ]),
     ];
-    await downloadHeatmapXlsx(
-      exportRows,
-      "coupang-pivot.xlsx",
-      {
-        dataStartRow: 2,
-        heatmapStartColumn: 4,
-        heatmapEndColumn: 3 + visibleDates.length,
-        totalStartColumn: 4 + visibleDates.length,
-        color: isCancellationMetric ? "red" : isRatioMetric ? "green" : "blue",
-        ratioMetric: isRatioMetric,
-      },
-    );
+    try {
+      await downloadHeatmapXlsx(
+        exportRows,
+        "coupang-pivot.xlsx",
+        {
+          dataStartRow: 2,
+          heatmapStartColumn: 4,
+          heatmapEndColumn: 3 + visibleDates.length,
+          totalStartColumn: 4 + visibleDates.length,
+          color: isCancellationMetric ? "red" : isRatioMetric ? "green" : "blue",
+          ratioMetric: isRatioMetric,
+        },
+      );
+    } catch (error) {
+      window.alert(`피벗 엑셀 다운로드 실패: ${(error as Error).message}`);
+    }
   }
 
   // 가상화 스크롤 이벤트 핸들러

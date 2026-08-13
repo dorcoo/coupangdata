@@ -6,12 +6,14 @@ type RawRow = Record<string, unknown>;
 declare global {
   interface Window {
     XLSX?: typeof SheetJS;
+    XLSX_STYLE?: typeof SheetJS;
   }
 }
 
 const metricKeys: MatchingMetricKey[] = ["visitors", "views", "carts", "orders", "units_sold", "revenue"];
 const sheetJsUrl = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
 let sheetJsPromise: Promise<typeof SheetJS> | null = null;
+let styledSheetJsPromise: Promise<typeof SheetJS> | null = null;
 
 // 헤더 별칭 사전 정의 (쿠팡 양식 변동 대응)
 const aliases: Record<string, string[]> = {
@@ -52,6 +54,34 @@ function loadSheetJs(): Promise<typeof SheetJS> {
     document.head.appendChild(script);
   });
   return sheetJsPromise;
+}
+
+function loadStyledSheetJs(): Promise<typeof SheetJS> {
+  if (window.XLSX_STYLE) return Promise.resolve(window.XLSX_STYLE);
+  if (styledSheetJsPromise) return styledSheetJsPromise;
+  styledSheetJsPromise = new Promise((resolve, reject) => {
+    const standardXlsx = window.XLSX;
+    const script = document.createElement("script");
+    script.src = new URL("./xlsx-js-style.min.js", document.baseURI).href;
+    script.onload = () => {
+      const styledXlsx = window.XLSX;
+      window.XLSX = standardXlsx;
+      if (!styledXlsx?.utils?.book_new || !styledXlsx.writeFile) {
+        styledSheetJsPromise = null;
+        reject(new Error("히트맵 엑셀 모듈 초기화에 실패했습니다."));
+        return;
+      }
+      window.XLSX_STYLE = styledXlsx;
+      resolve(styledXlsx);
+    };
+    script.onerror = () => {
+      window.XLSX = standardXlsx;
+      styledSheetJsPromise = null;
+      reject(new Error("히트맵 엑셀 모듈을 불러오지 못했습니다."));
+    };
+    document.head.appendChild(script);
+  });
+  return styledSheetJsPromise;
 }
 
 function numberValue(value: unknown): number {
@@ -255,8 +285,7 @@ export async function downloadHeatmapXlsx(
   filename: string,
   options: HeatmapXlsxOptions,
 ): Promise<void> {
-  const styledModule = await import("xlsx-js-style");
-  const XLSX = (styledModule as unknown as { default?: typeof styledModule }).default ?? styledModule;
+  const XLSX = await loadStyledSheetJs();
   const workbook = XLSX.utils.book_new();
   const worksheet = XLSX.utils.aoa_to_sheet(rows);
   const lastColumn = Math.max(0, ...rows.map((row) => row.length - 1));
