@@ -1,5 +1,4 @@
 import { useState, type ChangeEvent } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DailyMetric, VendorImport } from "../../types";
 import {
   downloadXlsx,
@@ -8,19 +7,17 @@ import {
   parseVendorItems,
   withMetricDate,
 } from "../../lib/excel";
-import { saveDaily, saveItems } from "../../lib/repository";
+import { saveDaily, saveItems } from "../../lib/analyticsRepository";
 import { compareSort, number, type SortDirection } from "../../lib/analyticsHelper";
 import SortHeader from "../Common/SortHeader";
 
 interface ImportPanelProps {
   daily: DailyMetric[];
-  client: SupabaseClient | null;
   onSaved: (text: string) => Promise<void>;
 }
 
 export default function ImportPanel({
   daily,
-  client,
   onSaved,
 }: ImportPanelProps) {
   const [reports, setReports] = useState<VendorImport[]>([]);
@@ -76,7 +73,7 @@ export default function ImportPanel({
     setWorking(true);
     try {
       const rows = await parseDailySummary(file);
-      await saveDaily(client, rows);
+      await saveDaily(rows);
       await onSaved(`${file.name}: 일별 요약 ${rows.length}일을 저장했습니다.`);
     } catch (error) {
       await onSaved((error as Error).message);
@@ -113,9 +110,8 @@ export default function ImportPanel({
     }
     setWorking(true);
     try {
-      for (const report of reports) {
-        await saveItems(client, withMetricDate(report, manualDates[report.source_file]));
-      }
+      const rows = reports.flatMap((report) => withMetricDate(report, manualDates[report.source_file]));
+      await saveItems(rows);
       await onSaved(`상품별 지표 ${reports.reduce((sum, report) => sum + report.rows.length, 0)}행을 저장했습니다.`);
       setReports([]);
     } catch (error) {
@@ -130,7 +126,7 @@ export default function ImportPanel({
       <div className="panel-heading">
         <div>
           <h2>엑셀 가져오기</h2>
-          <p>일별 요약을 먼저 저장하면 상품 지표의 날짜를 6개 핵심 합계로 자동 매칭합니다.</p>
+          <p>일별 요약 파일을 먼저 올린 다음, 상품별 파일을 선택하세요.</p>
         </div>
       </div>
       <div className="upload-grid">

@@ -1,15 +1,16 @@
 import { useEffect, useState, type KeyboardEvent } from "react";
+import type { FulfillmentFilter } from "../../types";
 
 interface AnalyticsToolbarProps {
   query: string;
   fromDate: string;
   toDate: string;
   allDates: string[];
-  fulfillmentFilter: string;
+  fulfillmentFilter: FulfillmentFilter;
   onQuery: (value: string) => void;
   onFromDate: (value: string) => void;
   onToDate: (value: string) => void;
-  onFulfillmentFilter: (value: string) => void;
+  onFulfillmentFilter: (value: FulfillmentFilter) => void;
 }
 
 function localIsoDate(date: Date): string {
@@ -64,7 +65,7 @@ export default function AnalyticsToolbar({
     applyFilters();
   }
 
-  function applyFulfillmentFilter(value: string) {
+  function applyFulfillmentFilter(value: FulfillmentFilter) {
     setDraftFulfillmentFilter(value);
     onQuery(draftQuery);
     onFromDate(draftFromDate);

@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
-import { clearAnalyticsData, loadDaily, loadItems } from "./lib/repository";
-import { hasSupabaseConfig, supabase } from "./lib/supabase";
-import type { DailyMetric, ItemMetric, View } from "./types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { clearAnalyticsData, isServerStorage, loadDaily, loadItems } from "./lib/analyticsRepository";
+import type { DailyMetric, FulfillmentFilter, ItemMetric, View } from "./types";
 import { buildTrendSeries } from "./lib/analyticsHelper";
 
 // 헬퍼 및 컴포넌트 임포트
@@ -16,11 +14,9 @@ import WinnerRiskPanel from "./components/Analytics/WinnerRiskPanel";
 import PivotPanel from "./components/Analytics/PivotPanel";
 import ProductsPanel from "./components/Analytics/ProductsPanel";
 import ImportPanel from "./components/Settings/ImportPanel";
-import SetupPanel from "./components/Settings/SetupPanel";
 
 export default function App() {
   const [view, setView] = useState<View>("dashboard");
-  const [session, setSession] = useState<Session | null>(null);
   const [daily, setDaily] = useState<DailyMetric[]>([]);
   const [items, setItems] = useState<ItemMetric[]>([]);
   const [message, setMessage] = useState("");
@@ -28,42 +24,36 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [fulfillmentFilter, setFulfillmentFilter] = useState<string>("all");
+  const [fulfillmentFilter, setFulfillmentFilter] = useState<FulfillmentFilter>("all");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [serverConnected, setServerConnected] = useState(false);
   const initialPeriodSet = useRef(false);
-
-  const dataClient = hasSupabaseConfig && session ? supabase : null;
-  const modeLabel = dataClient ? "Supabase Sync" : "Local Mode";
-
-  // Supabase 세션 리스너 설정
-  useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
-    return () => data.subscription.unsubscribe();
-  }, []);
 
   // 레포지토리에서 데이터 로드
   useEffect(() => {
     let active = true;
     setLoading(true);
-    Promise.all([loadDaily(dataClient), loadItems(dataClient)])
+    const connection = isServerStorage().then((connected) => {
+      if (active) setServerConnected(connected);
+    });
+    Promise.all([loadDaily(), loadItems(), connection])
       .then(([nextDaily, nextItems]) => {
         if (!active) return;
         setDaily(nextDaily);
         setItems(nextItems);
       })
-      .catch((error: Error) => setMessage(`데이터를 불러오지 못했습니다: ${error.message}`))
+      .catch((error: Error) => active && setMessage(`데이터를 불러오지 못했습니다: ${error.message}`))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [dataClient]);
+  }, []);
 
   async function refresh() {
+    setServerConnected(await isServerStorage());
     const [nextDaily, nextItems] = await Promise.all([
-      loadDaily(dataClient),
-      loadItems(dataClient),
+      loadDaily(),
+      loadItems(),
     ]);
     setDaily(nextDaily);
     setItems(nextItems);
@@ -86,7 +76,7 @@ export default function App() {
   }, [allDates, fromDate, toDate]);
 
   // 검색, 날짜 범위 필터 가공
-  const baseFilteredItems = items.filter(
+  const baseFilteredItems = useMemo(() => items.filter(
     (item) =>
       (!fromDate || item.metric_date >= fromDate) &&
       (!toDate || item.metric_date <= toDate) &&
@@ -94,11 +84,11 @@ export default function App() {
         `${item.product_name} ${item.registered_product_id} ${item.option_name} ${item.option_id}`
           .toLowerCase()
           .includes(query.toLowerCase())),
-  );
+  ), [items, fromDate, toDate, query]);
 
-  const filteredItems = baseFilteredItems.filter(
+  const filteredItems = useMemo(() => baseFilteredItems.filter(
     (item) => fulfillmentFilter === "all" || item.fulfillment.trim() === fulfillmentFilter,
-  );
+  ), [baseFilteredItems, fulfillmentFilter]);
 
   const filteredDaily = daily.filter(
     (row) => (!fromDate || row.metric_date >= fromDate) && (!toDate || row.metric_date <= toDate)
@@ -114,7 +104,7 @@ export default function App() {
   async function resetData() {
     if (!window.confirm("업로드된 일별/상품별 분석 데이터를 모두 초기화할까요?")) return;
     try {
-      await clearAnalyticsData(dataClient);
+      await clearAnalyticsData();
       await refresh();
       setMessage("분석 데이터를 초기화했습니다.");
     } catch (error) {
@@ -131,7 +121,7 @@ export default function App() {
             <h1>쿠팡 판매량 분석기</h1>
             <p>쿠팡 판매량 확인용</p>
           </div>
-          <span className={`mode ${dataClient ? "cloud" : ""}`}>{modeLabel}</span>
+          <span className={`mode${serverConnected ? " cloud" : ""}`}>자동 저장</span>
         </div>
         <button type="button" className="reset" onClick={resetData}>
           전체 데이터 초기화
@@ -145,7 +135,7 @@ export default function App() {
           onSelect={setView}
         />
         <main className="content">
-          {view !== "import" && view !== "setup" && (
+          {view !== "import" && (
             <AnalyticsToolbar
               query={query}
               fromDate={fromDate}
@@ -175,7 +165,11 @@ export default function App() {
           {view === "categories" && <CategoryPanel items={filteredItems} />}
           {view === "winner" && <WinnerRiskPanel items={filteredItems} />}
           {view === "pivot" && (
-            <PivotPanel items={baseFilteredItems} />
+            <PivotPanel
+              items={filteredItems}
+              fulfillmentFilter={fulfillmentFilter}
+              onFulfillmentFilter={setFulfillmentFilter}
+            />
           )}
           {view === "products" && (
             <ProductsPanel items={filteredItems} />
@@ -183,19 +177,15 @@ export default function App() {
           {view === "import" && (
             <ImportPanel
               daily={daily}
-              client={dataClient}
               onSaved={async (text) => {
                 setMessage(text);
-                await refresh();
+                try { await refresh(); }
+                catch (error) { setMessage(`${text} 화면 갱신 실패: ${(error as Error).message}`); }
               }}
             />
           )}
-          {view === "setup" && <SetupPanel session={session} onMessage={setMessage} />}
         </main>
       </div>
     </div>
   );
 }
-
-// 헬퍼용 추가 모듈 선언 (React.useMemo를 App.tsx 내부에서 바인딩하기 위해 복구)
-import { useMemo } from "react";

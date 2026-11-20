@@ -34,9 +34,9 @@ export default function Sidebar({ view, collapsed, onToggle, onSelect }: Sidebar
         type="button"
         className={view === "import" ? "active" : ""}
         onClick={() => onSelect("import")}
-        title="파일 클라우드 업로드"
+        title="엑셀 가져오기"
       >
-        <span>↥</span><b>파일 클라우드 업로드</b>
+        <span>↥</span><b>엑셀 가져오기</b>
       </button>
       <div className="side-divider" />
       <p className="side-title">분석 뷰 선택</p>
@@ -51,15 +51,6 @@ export default function Sidebar({ view, collapsed, onToggle, onSelect }: Sidebar
           <span>{icon}</span><b>{label}</b>
         </button>
       ))}
-      <div className="side-divider" />
-      <button
-        type="button"
-        className={view === "setup" ? "active" : ""}
-        onClick={() => onSelect("setup")}
-        title="Supabase 설정"
-      >
-        <span>⚙</span><b>Supabase 설정</b>
-      </button>
     </aside>
   );
 }

@@ -1,7 +1,7 @@
 :root {
   color: #10223d;
   background: #f5f7fb;
-  font-family: Inter, "Malgun Gothic", "Apple SD Gothic Neo", Arial, sans-serif;
+  font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -172,7 +172,7 @@ th:first-child, td:first-child, th:nth-child(2), td:nth-child(2), th:nth-child(3
 .winner-badge.safe { color: #00865e; background: #dcf8eb; }
 .winner-badge.warning { color: #b86b00; background: #fff1d2; }
 .winner-badge.danger { color: #dc304c; background: #ffe4ea; }
-.risk-banner { display: flex; align-items: center; justify-content: space-between; gap: 20px; background: #fff; border-left: 5px solid #ef4444; padding: 22px 24px; border-radius: 15px; margin-bottom: 18px; }
+.risk-banner { display: flex; align-items: center; justify-content: space-between; gap: 20px; background: #fff; border: 1px solid #e3ebf4; padding: 22px 24px; border-radius: 15px; margin-bottom: 18px; }
 .risk-banner h2 { font-size: 20px; margin-bottom: 6px; }
 .risk-banner p { color: #71849c; font-size: 13px; }
 .danger-callout { background: #ffe4ea; color: #d92745; padding: 10px 16px; border-radius: 20px; font-weight: 800; white-space: nowrap; }

@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState, type CSSProperties, type UIEvent } from "react";
-import type { ItemMetric, PivotMetricKey } from "../../types";
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type UIEvent } from "react";
+import type { FulfillmentFilter, ItemMetric, PivotMetricKey } from "../../types";
 import { downloadHeatmapXlsx } from "../../lib/excel";
 import {
   compareSort,
@@ -14,33 +14,46 @@ import SortHeader from "../Common/SortHeader";
 
 interface PivotPanelProps {
   items: ItemMetric[];
+  fulfillmentFilter: FulfillmentFilter;
+  onFulfillmentFilter: (value: FulfillmentFilter) => void;
 }
 
 type GroupKey = "product_name" | "option_name";
-type FulfillmentFilter = "all" | "로켓그로스" | "판매자배송";
 
-export default function PivotPanel({ items }: PivotPanelProps) {
+export default function PivotPanel({ items, fulfillmentFilter, onFulfillmentFilter }: PivotPanelProps) {
   const [metric, setMetric] = useState<PivotMetricKey>("revenue");
   const [groupKey, setGroupKey] = useState<GroupKey>("option_name");
-  const [fulfillmentFilter, setFulfillmentFilter] = useState<FulfillmentFilter>("all");
   const [heatmapEnabled, setHeatmapEnabled] = useState(true);
   const [sortKey, setSortKey] = useState<string>("total");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [labelWidth, setLabelWidth] = useState(480);
   const resizeStart = useRef({ x: 0, width: 480 });
 
-  // 가상 스크롤 상태 정의
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
-  const containerHeight = 980; // 뷰포트 높이
-  const rowHeight = 46; // styles.css 상 td 패딩(13px*2) + 폰트(12px) = 약 46px
+  const [containerHeight, setContainerHeight] = useState(980);
+  const rowHeight = 46;
 
-  const selectedItems = useMemo(
-    () => items.filter((item) => fulfillmentFilter === "all" || item.fulfillment.trim() === fulfillmentFilter),
-    [items, fulfillmentFilter],
-  );
+  const selectedItems = items;
 
   const dates = useMemo(() => [...new Set(selectedItems.map((item) => item.metric_date))].sort(), [selectedItems]);
   const visibleDates = dates;
+  const hasData = dates.length > 0;
+
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const updateHeight = () => setContainerHeight(container.clientHeight);
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [hasData]);
+
+  useLayoutEffect(() => {
+    if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+    setScrollTop(0);
+  }, [items, groupKey, metric, sortKey, sortDirection]);
 
   const rows = useMemo(() => {
     const grouped = new Map<string, Map<string, ItemMetric[]>>();
@@ -175,10 +188,14 @@ export default function PivotPanel({ items }: PivotPanelProps) {
     setScrollTop(event.currentTarget.scrollTop);
   };
 
-  // 렌더링 범위 인덱스 연산 (상/하단 3개씩 버퍼 배치)
-  const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - 3);
-  const endIndex = Math.min(rows.length, Math.ceil((scrollTop + containerHeight) / rowHeight) + 3);
-  
+  // 필터 변경 직후에도 범위를 남은 행 수 안으로 제한합니다.
+  const visibleRowCount = Math.ceil(containerHeight / rowHeight) + 6;
+  const startIndex = Math.min(
+    Math.max(0, Math.floor(scrollTop / rowHeight) - 3),
+    Math.max(0, rows.length - visibleRowCount),
+  );
+  const endIndex = Math.min(rows.length, startIndex + visibleRowCount);
+
   const visibleRows = rows.slice(startIndex, endIndex);
   const totalColumns = 3 + visibleDates.length + 2; // 전체 td 갯수
 
@@ -191,7 +208,7 @@ export default function PivotPanel({ items }: PivotPanelProps) {
           <div className="pivot-controls">
             <label>
               판매방식
-              <select value={fulfillmentFilter} onChange={(event) => setFulfillmentFilter(event.target.value as FulfillmentFilter)}>
+              <select value={fulfillmentFilter} onChange={(event) => onFulfillmentFilter(event.target.value as FulfillmentFilter)}>
                 <option value="all">전체</option>
                 <option value="로켓그로스">로켓그로스</option>
                 <option value="판매자배송">판매자배송</option>
@@ -235,6 +252,7 @@ export default function PivotPanel({ items }: PivotPanelProps) {
         ) : (
           /* 가상화를 위해 고정 높이와 overflowY 지정을 감싸는 컨테이너 생성 */
           <div
+            ref={scrollContainerRef}
             className="table-wrap pivot-scroll"
             onScroll={handleScroll}
             style={{ "--pivot-label-width": `${labelWidth}px` } as CSSProperties}

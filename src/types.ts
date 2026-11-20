@@ -63,7 +63,8 @@ export interface Conversation {
   created_at?: string;
 }
 
-export type View = "dashboard" | "trend" | "categories" | "winner" | "pivot" | "products" | "import" | "setup";
+export type View = "dashboard" | "trend" | "categories" | "winner" | "pivot" | "products" | "import";
+export type FulfillmentFilter = "all" | "로켓그로스" | "판매자배송";
 export type ChartMetric = "views" | "units" | "revenue" | "conversion" | "winner";
 
 export interface TrendPoint {

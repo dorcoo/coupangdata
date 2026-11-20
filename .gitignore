@@ -1,8 +1,12 @@
 node_modules
 dist
+dist-pages
+/판매량 분석기.html
+outputs/
 .env
 .env.local
 *.local
+*.local.sql
 vite-dev.*.log
 build*.log
 conversation/
