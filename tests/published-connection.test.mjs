@@ -9,8 +9,8 @@ const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.Scri
 const project = { url: "https://aaaaaaaaaaaaaaaaaaaa.supabase.co", publishableKey: "sb_publishable_" + "a".repeat(32), siteUrl: "https://example.github.io/analytics/" };
 const key = "b".repeat(64);
 
-function setup({ hash = "", saved = null, enabled = true, reject = false } = {}) {
-  const location = { hash, pathname: "/analytics/", search: "?view=dashboard" };
+function setup({ hash = "", saved = null, enabled = true, reject = false, activation = false } = {}) {
+  const location = { hash, pathname: "/analytics/", search: activation ? "?connect=1&view=dashboard" : "?view=dashboard" };
   const remembered = [];
   let value = saved;
   const mod = { exports: {} };
@@ -30,7 +30,7 @@ function setup({ hash = "", saved = null, enabled = true, reject = false } = {})
 }
 
 test("a private URL activates once, removes its fragment, and then works at the original base URL", async () => {
-  const s = setup({ hash: "#connect=" + key });
+  const s = setup({ hash: "#connect=" + key, activation: true });
   const first = await s.api.getPublishedConnection();
   assert.equal(first.accessKey, key);
   assert.equal(first.url, project.url);

@@ -12,7 +12,10 @@ export async function getPublishedConnection(): Promise<CloudConnection | null> 
   const hash = new URLSearchParams(window.location.hash.slice(1));
   if (hash.has("connect")) {
     const accessKey = hash.get("connect");
-    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    const search = new URLSearchParams(window.location.search);
+    search.delete("connect");
+    const query = search.toString();
+    window.history.replaceState(null, "", window.location.pathname + (query ? `?${query}` : ""));
     return rememberCloudConnection({ format: "coupang-sales-connection-v1", url: project.url,
       publishableKey: project.publishableKey, accessKey, snapshotMode: "paged" });
   }

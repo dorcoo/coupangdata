@@ -10,6 +10,8 @@ const siteUrl = "https://dorcoo.github.io/coupangdata/";
 const project = { url: connection.url, publishableKey: connection.publishableKey, siteUrl };
 fs.writeFileSync(path.join(root, "supabase/public-project.json"), JSON.stringify(project, null, 2) + "\n");
 const link = new URL(siteUrl);
+// 이미 열린 기본 주소에서도 새 문서로 이동해 자동 연결을 실행합니다.
+link.searchParams.set("connect", "1");
 link.hash = new URLSearchParams({ connect: connection.accessKey }).toString();
 fs.mkdirSync(path.join(root, "outputs"), { recursive: true });
 fs.writeFileSync(path.join(root, "outputs/published-connection.local"), JSON.stringify({ url: link.href }) + "\n", { mode: 0o600 });
