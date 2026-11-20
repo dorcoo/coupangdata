@@ -28,14 +28,14 @@ test("HTML builds never fall back to the private server key and only include all
   }
 });
 
-test("the public build can only load project metadata and excludes all access keys", async () => {
+test("the public build only includes the dedicated web key and excludes administrator fields", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "coupang-public-build-"));
   const directory = path.join(root, "supabase");
   const filename = path.join(directory, "public-project.json");
   await fs.mkdir(directory);
   try {
-    const project = { url: "https://aaaaaaaaaaaaaaaaaaaa.supabase.co", publishableKey: "sb_publishable_" + "a".repeat(32), siteUrl: "https://example.github.io/analytics/" };
-    await fs.writeFile(filename, JSON.stringify({ ...project, accessKey: "never embed", serviceRoleKey: "never embed either" }));
+    const project = { url: "https://aaaaaaaaaaaaaaaaaaaa.supabase.co", publishableKey: "sb_publishable_" + "a".repeat(32), siteUrl: "https://example.github.io/analytics/", accessKey: "d".repeat(64) };
+    await fs.writeFile(filename, JSON.stringify({ ...project, serviceRoleKey: "never embed either" }));
     assert.deepEqual(loadPublishedProject(root), project);
     await fs.writeFile(filename, JSON.stringify({ ...project, publishableKey: "sb_secret_" + "a".repeat(32) }));
     assert.throws(() => loadPublishedProject(root));

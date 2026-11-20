@@ -8,10 +8,11 @@ export function loadPublishedProject(root) {
   if (url.protocol !== "https:" || !/^[a-z0-9]{20}\.supabase\.co$/.test(url.hostname)
     || url.pathname !== "/" || url.search || url.hash || url.username || url.password || url.port
     || !/^sb_publishable_[A-Za-z0-9_-]{20,}$/.test(config.publishableKey ?? "")
+    || !/^[a-f0-9]{64}$/.test(config.accessKey ?? "")
     || site.protocol !== "https:" || site.username || site.password || site.search || site.hash || site.port) {
     throw new Error("Invalid published analytics project");
   }
-  return { url: url.origin, publishableKey: config.publishableKey, siteUrl: site.href };
+  return { url: url.origin, publishableKey: config.publishableKey, siteUrl: site.href, accessKey: config.accessKey };
 }
 
 export function loadStandaloneConnection(root) {

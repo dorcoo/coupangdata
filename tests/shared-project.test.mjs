@@ -133,3 +133,34 @@ test("a separate HTML key retains the private connection and does not grant othe
   await db.exec("reset role;");
   assert.deepEqual((await db.query("select relacl::text, relrowsecurity from pg_class where oid = 'public.other_app_records'::regclass")).rows, originalApp);
 });
+
+test("bulk upload timeout applies only to the atomic write RPC", async () => {
+  await db.exec("reset role;");
+  const roles = (await db.query("select rolname, rolconfig from pg_roles where rolname in ('anon','authenticated') order by rolname")).rows;
+  await db.exec(fs.readFileSync(new URL("../supabase/bulk-upload.sql", import.meta.url), "utf8"));
+  const functions = (await db.query("select proname, proconfig, prosecdef from pg_proc where proname in ('coupang_sales_write_metrics','coupang_sales_read_page') order by proname")).rows;
+  const writing = functions.find(f => f.proname === "coupang_sales_write_metrics");
+  assert.ok(writing.proconfig.includes("statement_timeout=45s"));
+  assert.equal(writing.prosecdef, false);
+  assert.equal(functions.find(f => f.proname === "coupang_sales_read_page").proconfig.some(s => s.startsWith("statement_timeout=")), false);
+  assert.deepEqual((await db.query("select rolname, rolconfig from pg_roles where rolname in ('anon','authenticated') order by rolname")).rows, roles);
+});
+
+test("public website access is scoped to analytics while private and HTML connections still work", async () => {
+  const webKey = "d".repeat(64), htmlKey = "c".repeat(64);
+  const upgrade = fs.readFileSync(new URL("../supabase/allow-public.sql", import.meta.url), "utf8")
+    .replaceAll("__PRIVATE_KEY_SHA256__", hash)
+    .replaceAll("__STANDALONE_KEY_SHA256__", createHash("sha256").update(htmlKey).digest("hex"))
+    .replaceAll("__PUBLIC_KEY_SHA256__", createHash("sha256").update(webKey).digest("hex"));
+  await db.exec("reset role;");
+  await db.exec(upgrade);
+  await db.exec("set role anon;");
+  for (const allowed of [webKey, htmlKey, key]) {
+    await configureHeaders(allowed);
+    await write([daily], [item]);
+    assert.equal((await snapshot()).items.length, 1);
+    await assert.rejects(db.query("select * from public.other_app_records"), denied);
+  }
+  await configureHeaders(null);
+  await assert.rejects(snapshot(), denied);
+});

@@ -71,6 +71,11 @@ test("failed writes report failure instead of success", async () => {
   await assert.rejects(api.writeCloudSnapshot(config, empty), /자료에 연결하지/);
 });
 
+test("server statement timeouts preserve the failed import instead of reporting partial success", async () => {
+  const { api } = client(() => reply({ code: "57014" }, 500));
+  await assert.rejects(api.writeCloudSnapshot(config, empty), /처리 시간이 초과.*기존 자료와 선택한 파일은 유지/);
+});
+
 test("web activation verifies access before remembering the key without reading the entire dataset twice", async () => {
   let allowed = true;
   const { api, requests, preferences } = client(() => reply(allowed));

@@ -130,7 +130,7 @@ $$;
 
 create function public.coupang_sales_write_metrics(daily_rows jsonb default '[]'::jsonb, item_rows jsonb default '[]'::jsonb)
 returns jsonb
-language plpgsql security invoker set search_path = ''
+language plpgsql security invoker set search_path = '' set statement_timeout = '45s'
 as $$
 declare
   daily_count integer;

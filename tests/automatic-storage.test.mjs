@@ -112,7 +112,7 @@ test("a failed direct copy preserves local originals and retries without overwri
   assert.equal(calls.localWrites, 0);
 });
 
-test("published browsers use the validated private link without probing a nonexistent local API", async () => {
+test("published browsers connect automatically without probing a nonexistent local API", async () => {
   const published = { url: "https://aaaaaaaaaaaaaaaaaaaa.supabase.co" };
   const { api, calls } = setup({ published });
   assert.equal((await api.loadItems())[0].revenue, 300);
@@ -121,7 +121,7 @@ test("published browsers use the validated private link without probing a nonexi
   assert.ok(calls.directConnections.every(c => c === published));
 });
 
-test("a public visitor without access cannot silently create a disconnected local dataset", async () => {
+test("a published configuration error cannot silently create a disconnected local dataset", async () => {
   const { api, calls } = setup({ publishedFailure: true });
   await assert.rejects(api.loadItems(), /Missing private link/);
   await assert.rejects(api.saveItems([sample]), /Missing private link/);

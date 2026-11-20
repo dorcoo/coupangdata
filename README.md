@@ -29,7 +29,7 @@
 
 배포 URL: <https://dorcoo.github.io/coupangdata/>
 
-웹에서는 처음 한 번 전달받은 전용 연결 링크로 열면 로그인 없이 연결됩니다. 이후에는 위 주소로 바로 열 수 있습니다. 연결 키는 검증 후 해당 브라우저에만 보관하며 주소에서 즉시 제거합니다. 연결 링크를 받지 않은 방문자에게는 판매 자료를 공개하지 않습니다.
+웹에서는 위 주소만 열면 기존 자료가 바로 표시됩니다. 전용 링크, 로그인, 이전 브라우저 설정이 필요하지 않습니다. 주소를 아는 방문자는 분석 자료를 조회·저장·초기화할 수 있습니다. 원래 프로젝트의 계정별 원본 테이블은 별도로 유지됩니다.
 
 **`판매량 분석기.html`을 더블클릭하세요.** 인터넷에 연결되어 있으면 기존 자료를 불러오고 새 자료도 서버에 저장합니다. 이 HTML 하나를 다른 폴더나 기기로 복사해도 사용할 수 있습니다. 연결 파일 선택, 로그인, 별도 프로그램 실행은 필요하지 않습니다.
 
@@ -40,7 +40,7 @@ npm install
 npm start
 ```
 
-HTML에는 이 분석기 자료에 한정된 접근 키가 포함됩니다. 관리자 키나 로컬 서버의 개인 키는 포함하지 않습니다. HTML을 가진 사람은 해당 분석 자료를 조회·저장·초기화할 수 있으므로 공개 배포와 구분해 보관하세요. 이 파일은 Git에서 제외됩니다. 공개 CI 빌드는 공개 프로젝트 정보만 포함하며 자료 접근 키는 포함하지 않습니다.
+HTML에는 이 분석기 자료에 한정된 접근 키가 포함됩니다. 관리자 키나 로컬 서버의 개인 키는 포함하지 않습니다. HTML을 가진 사람은 해당 분석 자료를 조회·저장·초기화할 수 있습니다. 이 파일은 Git에서 제외됩니다. 공개 웹에는 별도로 발급한 웹용 키만 포함하며 개인 HTML과 로컬 서버의 키는 공개하지 않습니다.
 
 앱이 열린 뒤 `엑셀 가져오기`에서 다음 순서로 업로드합니다.
 
@@ -83,9 +83,11 @@ node scripts/prepare-cloud-connection.mjs https://PROJECT_REF.supabase.co sb_pub
 
 단독 HTML을 설치할 때는 `node scripts/prepare-standalone.mjs`로 별도의 접근 키와 `outputs/allow-standalone.local.sql`을 생성합니다. 해당 SQL은 기존 키를 유지하며 HTML 전용 키를 허용합니다. 권한 적용 후 `npm run build`를 실행하면 `dist/index.html`과 루트의 `판매량 분석기.html`이 생성됩니다. 설정 파일, 실행 SQL, 연결 권한을 포함한 HTML은 Git에서 제외됩니다. 최초 설치는 이미 준비되어 있으므로 사용자는 HTML만 열면 됩니다.
 
-GitHub Pages는 `main`에 푸시하면 테스트 후 `npm run build -- --mode pages`로 만든 `dist-pages`를 배포합니다. 이 모드는 로컬 HTML 연결 설정을 읽지 않습니다. 공개 프로젝트 주소·Publishable key는 `supabase/public-project.json`에 보관하며, 비공개 연결 링크는 `node scripts/prepare-pages.mjs`가 Git에서 제외되는 `outputs/published-connection.local`에 생성합니다. 로컬 HTML의 `dist`와 공개 웹의 `dist-pages`는 별도로 유지합니다.
+GitHub Pages는 `main`에 푸시하면 테스트 후 `npm run build -- --mode pages`로 만든 `dist-pages`를 배포합니다. 이 모드는 로컬 HTML 연결 설정을 읽지 않습니다. `node scripts/prepare-pages.mjs`는 웹 전용 키를 포함한 `supabase/public-project.json`과 서버 등록용 `outputs/allow-public.local.sql`을 생성합니다. 공개 웹 설정은 사용자가 요청한 공개 조회·저장 용도이며, 로컬 서버·HTML의 개인 키와는 별개입니다. 로컬 HTML의 `dist`와 공개 웹의 `dist-pages`는 별도로 유지합니다.
 
 RLS는 공개 키만으로 자료를 읽거나 변경할 수 없도록 별도 접근 키를 검증합니다. RPC는 `SECURITY INVOKER`로 실행하며 기존 앱의 권한을 늘리지 않습니다. `전체 데이터 초기화`는 분석기 전용 서버 테이블만 비우며 기존 서비스 테이블과 복구 전 원본은 변경하지 않습니다.
+
+대량 업로드는 `coupang_sales_write_metrics` 함수에만 실행 제한 45초를 적용합니다. 일반 역할과 다른 조회의 제한은 변경하지 않습니다. 일별·상품별 저장은 하나의 트랜잭션으로 처리해 오류가 발생하면 전체를 취소합니다. 기존 서버에는 `supabase/bulk-upload.sql`을 적용하며 신규 설치 템플릿에도 같은 설정이 포함됩니다. [Supabase의 함수별 실행 제한 설정](https://supabase.com/docs/guides/database/postgres/timeouts#function-level)을 사용합니다.
 
 신규 설치는 비공개 설정의 `snapshotMode: "paged"`와 `coupang_sales_read_page`를 사용합니다. 상품 자료를 날짜·옵션 ID 순서로 최대 5,000건씩 읽어 서버의 요청별 시간 제한을 피하며, 화면에는 전체 결과를 합쳐 전달합니다. 기존 계정 복구 템플릿 `supabase/recover-existing-data.sql`은 확인한 사용자 UUID를 지정하고 최초 설치 트랜잭션 안에서만 사용합니다. 대상 계정이 없거나 새 저장소가 비어 있지 않으면 복구를 중단합니다.
 

@@ -57,13 +57,16 @@ async function post<T>(connection: CloudConnection, resource: string, body: obje
         ...extraHeaders,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(resource === "rpc/coupang_sales_write_metrics" ? 90000 : 60000),
     });
   } catch {
     throw new Error("서버에 연결하지 못했습니다. 연결 상태를 확인한 뒤 다시 시도해 주세요. 브라우저에 보관한 기존 자료는 유지됩니다.");
   }
   if (!response.ok) {
     const error = await response.json().catch(() => ({})) as { code?: string };
+    if (error.code === "57014" && resource === "rpc/coupang_sales_write_metrics") {
+      throw new Error("서버 처리 시간이 초과되어 저장을 취소했습니다. 기존 자료와 선택한 파일은 유지됩니다. 잠시 후 다시 저장해 주세요.");
+    }
     if (error.code === "PGRST202" || error.code === "PGRST205") {
       throw new Error("자료 저장소가 준비되지 않았습니다. 분석기를 다시 실행해 주세요.");
     }

@@ -211,7 +211,7 @@ export default function ImportPanel({
             </tbody>
           </table>
           <button type="button" className="primary" onClick={commitReports} disabled={working}>
-            확정하여 저장
+            {working ? "처리 중..." : "확정하여 저장"}
           </button>
         </div>
       )}
